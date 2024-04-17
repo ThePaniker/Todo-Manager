@@ -1,16 +1,26 @@
 use chrono::prelude::*;
 use std::collections::HashMap;
 use std::env;
+use std::path::Path;
+use std::fs::{ self, File };
+
+const VALID_FLAGS: [&'static str; 7] = [ "-V", "--version", "-h", "--help", "-l", "-c", "-n"];
 
 struct Todo {
     list: HashMap<String, String>,
 }
 
+
 impl Todo {
+    fn new() -> Todo {
+        Todo {
+            list: HashMap::new(),
+        }
+    }
 
     fn display(&self) {
         println!("Todo list:");
-        for (id, (key, value)) in self.list.iter().enumerate() {
+        for (id, (_key, value)) in self.list.iter().enumerate() {
             println!("{id}]=> {value}");
         }
     }
@@ -20,8 +30,8 @@ impl Todo {
     }
 
     fn help() -> String {
-        format!("usage: todo [<args>] 
-            [-v | --version] Show current verion
+        format!("usage: todo -n [<args>] 
+            [-V | --version] Show current verion
             [-h | --help] Show manual
             [-l ] Show full list
             [-c ] Clear list")
@@ -39,7 +49,7 @@ fn get_args() -> Option<Vec<String>> {
     Some(args.to_vec())
 }
 
-fn process_args() {
+fn process_args(todo: &mut Todo) {
     let args = match get_args() {
         Some(v) => v,
         None => {
@@ -50,71 +60,62 @@ fn process_args() {
 
     let mut index: usize = 0;
     while index < args.len() {
+        match args[index].trim() {
+            "--version" | "-V" => {
+                println!("{}", Todo::version());
+                std::process::exit(0);
+            },
+            "--help" | "-h" => {
+                println!("{}", Todo::help());
+                std::process::exit(0);
+            },
+            "-l" => {
+                todo.display();
+                std::process::exit(0);
+            },
+            "-c" => {
+                todo.clear();
+                println!("Todo list cleaned!");
+                std::process::exit(0);
+            },
+            "-n" => {
+                index += 1;
+                let mut _todo = String::new();
+                while index < args.len() {
+                    if VALID_FLAGS.contains(&args[index].trim()) {
+                        break;
+                    } else {
+                        _todo.push_str(&args[index].trim());
+                        _todo.push(' ');
+                    }
+                    index += 1;
+                }
+
+                if &_todo == "" {
+                    println!("{}", Todo::help());
+                    std::process::exit(0);
+                } else {
+                    todo.list.insert(Local::now().to_string(), _todo);
+                    std::process::exit(0);
+                }
+            },
+            _ => (),
+        }
     }
 }
 
 fn main() {
-    process_args();
+    // TODO:: Made I/O for todo.txt
+    let path = "todo.txt";
+    let file = if !fs::File::exists(path) {
+        let _ = fs::File::create_new(path);
+        fs::File::open(path).unwrap()
+    } else {
+        fs::File::open(path).unwrap()
+    };
 
 
- //   let mut todo: HashMap<String, String> = HashMap::new();
- //   let args: Vec<String> = env::args().collect();
- //   let flags: [&str; 7] = ["-h", "--help", "-v", "--version", "-V", "-n", "-l"];
- //   let mut index: usize = 0;
- //   while index < args.len() {
- //       match &args[index].as_str() {
- //           &"-v" | &"--version" | &"-V" => {
- //               println!("{}", Error::Version.to_string());
- //               index += 1;
- //           }
- //           &"-h" | &"--help" => {
- //               println!("{}", Error::Help.to_string());
- //               index += 1;
- //           }
- //           &"-l" => {
- //               if todo.len() == 0 {
- //                   println!("Todo List is Empty");
- //                   index += 1;
- //               } else {
- //                   println!("ToDo List:");
- //                   for (key, value) in &todo {
- //                       println!("{} >> {}", key, value);
- //                   }
- //                   index += 1;
- //               }
- //           }
- //           &"-n" => {
- //               index += 1;
- //               let mut _todo: String = String::new();
- //               while index < args.len() {
- //                   if flags.contains(&args[index].as_str()) {
- //                       break;
- //                   } else {
- //                       _todo.push_str(&args[index]);
- //                       _todo.push(' ');
- //                       index += 1;
- //                   }
- //               }
- //               if &_todo == "" {
- //                   println!("I can't add empty todo!");
- //                   println!("Error: {}", Error::Help.to_string());
- //                   std::process::exit(0);
- //               } else {
- //                   todo.insert(Local::now().to_string(), _todo);
- //               }
- //           }
- //           &"-c" => {
- //               if todo.len() == 0 {
- //                   println!("Todo List already empty!");
- //                   index += 1;
- //               } else {
- //                   todo.clear();
- //                   index += 1;
- //               }
- //           }
- //           _ => {
- //               index += 1;
- //           }
- //       }
- //   }
+
+    let mut todo: Todo = Todo::new();
+    process_args(&mut todo);
 }

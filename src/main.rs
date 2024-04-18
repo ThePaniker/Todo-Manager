@@ -105,16 +105,6 @@ fn process_args(todo: &mut Todo) {
 }
 
 fn main() {
-    // TODO:: Made I/O for todo.txt
-    let path = "todo.txt";
-    let file = if !fs::File::exists(path) {
-        let _ = fs::File::create_new(path);
-        fs::File::open(path).unwrap()
-    } else {
-        fs::File::open(path).unwrap()
-    };
-
-
 
     let mut todo: Todo = Todo::new();
     process_args(&mut todo);

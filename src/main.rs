@@ -2,7 +2,8 @@ use chrono::prelude::*;
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
-use std::fs::{ self, File };
+use std::io::prelude::*;
+use std::fs::File;
 
 const VALID_FLAGS: [&'static str; 7] = [ "-V", "--version", "-h", "--help", "-l", "-c", "-n"];
 
@@ -19,9 +20,13 @@ impl Todo {
     }
 
     fn display(&self) {
-        println!("Todo list:");
-        for (id, (_key, value)) in self.list.iter().enumerate() {
-            println!("{id}]=> {value}");
+        if self.list.len() == 0 {
+            println!("List Empty!");
+        } else {
+            println!("Todo list:");
+            for (id, (_key, value)) in self.list.iter().enumerate() {
+                println!("{id}: {value}");
+            }
         }
     }
 
@@ -38,7 +43,7 @@ impl Todo {
     }
 
     fn version() -> String {
-        format!("Todo version 0.2.0")
+        format!("Todo version 0.3.0")
     }
 }
 
@@ -59,24 +64,24 @@ fn process_args(todo: &mut Todo) {
     };
 
     let mut index: usize = 0;
-    while index < args.len() {
+    'main: loop {
         match args[index].trim() {
             "--version" | "-V" => {
                 println!("{}", Todo::version());
-                std::process::exit(0);
+                break 'main;
             },
             "--help" | "-h" => {
                 println!("{}", Todo::help());
-                std::process::exit(0);
+                break 'main;
             },
             "-l" => {
                 todo.display();
-                std::process::exit(0);
+                break 'main;
             },
             "-c" => {
                 todo.clear();
                 println!("Todo list cleaned!");
-                std::process::exit(0);
+                break 'main;
             },
             "-n" => {
                 index += 1;
@@ -91,21 +96,72 @@ fn process_args(todo: &mut Todo) {
                     index += 1;
                 }
 
+
                 if &_todo == "" {
                     println!("{}", Todo::help());
-                    std::process::exit(0);
+                    break 'main;
                 } else {
-                    todo.list.insert(Local::now().to_string(), _todo);
-                    std::process::exit(0);
+                    let mut _data = String::new();
+                    let data = Local::now().to_string();
+                    let data: Vec<_> = data.split_whitespace().collect();
+                    let time = &data[1].split('.').collect::<Vec<_>>(); 
+                    todo.list.insert(format!("{} {}", &data[0], time[0]), _todo);
+                    break 'main;
                 }
             },
-            _ => (),
+            _ => {
+                println!("{}", Todo::help());
+                break 'main;
+            },
         }
     }
 }
 
+<<<<<<< HEAD
 fn main() {
+=======
+fn main() -> Result<(), std::io::Error> {
+
+    let path = Path::new("./todo.txt");
+    let display = path.display();
+
+    let file = match File::open(&path) {
+        Err(_) => {
+            match File::create_new(&path) {
+                Err(e) => panic!("Error: {}", e),
+                Ok(file) => file,
+            }
+        },
+        Ok(file) => file,
+    };
+>>>>>>> dev
 
     let mut todo: Todo = Todo::new();
+    for line in std::io::read_to_string(file).unwrap().lines() {
+        let line: Vec<&str> = line.split(' ').collect();
+        let data = format!("{} {}", &line[0], &line[1]);
+        let mut _todo = String::new();
+        for i in line[2..].iter() {
+            _todo.push_str(i);
+            _todo.push(' ');
+        }
+        todo.list.insert(data, _todo);
+    }
+
     process_args(&mut todo);
+
+    let mut import = match File::create(path) {
+        Err(_) => panic!("Couldn't create {}", display),
+        Ok(file) => file,
+    };
+
+    for (key, value) in todo.list.iter() {
+        let string = format!("{key} {value}\n");
+        match import.write_all(string.as_bytes()) {
+            Ok(_) => (),
+            Err(_) => panic!("Couldn't write to {}", display),
+        }
+    }
+
+    Ok(())
 }
